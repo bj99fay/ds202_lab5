@@ -32,7 +32,7 @@ Accidents happen more often on Fridays, Saturdays, and Sundays. These are days t
 ## 2
 ```{r}
 time.dist <- accident %>%
-  filter(HOUR < 24)
+  filter(HOUR < 24) %>%
   group_by(HOUR)
 time.dist %>% ggplot(aes(x=HOUR)) + geom_bar() + labs(x = "Time of Day by Hour (24hr clock)", title = "Distribution of Accidents by Time of Day")
 ```
@@ -42,7 +42,7 @@ Accidents tend to happen in the late afternoon/evening. This is the time most pe
 ## 3
 ```{r}
 drunk <- accident %>%
-  mutate(DRUNK = ifelse(DRUNK_DR > 0, "Yes", "No"))
+  mutate(DRUNK = ifelse(DRUNK_DR > 0, "Yes", "No")) %>%
   group_by(DRUNK)
 
 drunk %>% filter(DRUNK == "Yes") %>% count() %>% rename("Drunk driving accidents" = "n")
@@ -56,6 +56,78 @@ There were 8769 accidents involving at least one drunk driver. There are around 
 ```{r}
 person <- person %>%
   filter(PER_TYP == 1)
-person
+head(person)
 ```
+
+## 5
+```{r}
+accPer <- accident %>% inner_join(person, by = c('ST_CASE', 'STATE', 'COUNTY'))
+```
+
+## 6
+```{r}
+accPer %>% group_by(DAY_WEEK) %>% tally() %>% ggplot(aes(x = factor(DAY_WEEK), y = n)) + geom_bar(stat = 'identity') + 
+  ggtitle("Number of Accidents per Day of the Week") + xlab('Day of Week') + 
+  ylab("Number of Accidents") + 
+  scale_x_discrete(breaks = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+accPer %>% group_by(HOUR.x) %>% tally() %>% filter(HOUR.x != 99) %>% ggplot(aes(x = HOUR.x, y = n)) + geom_line() + ggtitle("Total Accidents per Hour") +
+  xlab("Hour of Day") + ylab("Number of Accidents")
+
+accPer %>% group_by(SEX) %>% tally() %>% filter(n > 900) %>% ggplot(aes(x = factor(SEX), y = n)) + geom_bar(stat = 'identity')+
+  ggtitle("Total Accidents per Sex") + xlab('Sex') + ylab("Number of Accidents") +
+  scale_x_discrete(breaks = c('1','2','9'), labels = c('Male', "Female", "Unknown"))
+```
+
+As seen above, accidents are heavily focused around the weekends. Specifically, Fridays, Saturdays, and Sundays feature higher rates of accidents. Drivers are also more prone to accidents in the late afternoon, mostly from 5pm to 7pm. This likely due to the large number of drivers getting off of work for the day and commuting home. Finally, we can see the vast majority of accidents involve male drivers.
+
+
+
+## 7/8
+```{r}
+county <- map_data("county")
+countytally <- accPer %>% group_by(COUNTY) %>% tally()
+colnames(countytally)[1] <- 'group'
+
+finalSet <- county %>% left_join(countytally, by = 'group')
+ggplot(finalSet, mapping = aes(x = long, y = lat, group = group, fill = n)) + geom_polygon()
+```
+
+
+## 9
+```{r}
+monthTally <- accPer %>% group_by(MONTH.x) %>% tally()
+
+accPer <- accPer %>% right_join(monthTally, by = "MONTH.x")
+
+accPer1 <- accPer %>% filter(STATE < 18)
+accPer2 <- accPer %>% filter(STATE < 36, STATE >= 18)
+accPer3 <- accPer %>% filter(STATE < 51, STATE >= 36)
+
+
+ggplot(accPer1, mapping = aes(x = MONTH.x, y = n, fill = MONTH.x)) + 
+  geom_bar(stat = 'identity') +
+  facet_wrap("STATE")+
+  scale_fill_gradient(low = 'blue', high = 'red') + ggtitle("Monthy Accidents per State")+
+  xlab("Month") + ylab("Number of Accidents")
+ggplot(accPer2, mapping = aes(x = MONTH.x, y = n, fill = MONTH.x)) + 
+  geom_bar(stat = 'identity') +
+  facet_wrap("STATE")+
+  scale_fill_gradient(low = 'blue', high = 'red') + ggtitle("Monthy Accidents per State")+
+  xlab("Month") + ylab("Number of Accidents")
+
+ggplot(accPer3, mapping = aes(x = MONTH.x, y = n, fill = MONTH.x)) + 
+  geom_bar(stat = 'identity') +
+  facet_wrap("STATE")+
+  scale_fill_gradient(low = 'blue', high = 'red') + ggtitle("Monthy Accidents per State")+
+  xlab("Month") + ylab("Number of Accidents")
+
+```
+
+One would expect there to be a larger number of accidents in the winter months. However, as seen above, the number of accidents remains largely the same over the course of the year. In the case of some states we even observe a larger number of accidents during the summer months which is largely counterintuitive. This may be explained by greater numbers of drivers on the roads for summer vacations and other trips.
+
+
+
+
+
 
